@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --fg: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+}
+html, body {
+  height: 100%;
+  color: var(--fg);
+  background: #ffffff;
+}
+a { color: theme(colors.brand); }
+.container { max-width: 1100px; }
