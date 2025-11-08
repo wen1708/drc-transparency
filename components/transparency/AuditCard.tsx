@@ -1,15 +1,34 @@
-import { Card } from "@/components/ui/Card";
-import { AuditInfo } from "@/lib/types";
+﻿// components/transparency/AuditCard.tsx
+"use client";
 
-export function AuditCard({ data, loading }: { data?: AuditInfo; loading?: boolean }) {
-  if (loading) return <Card className="p-5">加载审计信息…</Card>;
-  if (!data) return <Card className="p-5">暂无审计信息。</Card>;
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+
+export function AuditCard({
+  status = "Pending",
+  link,
+}: {
+  status?: "Pending" | "Passed" | "Failed";
+  link?: string;
+}) {
+  const color =
+    status === "Passed" ? "text-green-600" : status === "Failed" ? "text-red-600" : "text-amber-600";
+
   return (
-    <Card className="p-5 space-y-2">
-      <div className="text-sm text-slate-500">审计机构</div>
-      <div className="text-lg font-semibold">{data.vendor}</div>
-      <a className="underline" href={data.reportUrl}>查看报告</a>
-      <div className="text-xs text-slate-500">状态：{data.status}</div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Audit</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className={`text-sm ${color}`}>Status: {status}</div>
+        {link ? (
+          <a className="text-sm underline underline-offset-4" href={link} target="_blank" rel="noreferrer">
+            View report
+          </a>
+        ) : (
+          <div className="text-sm opacity-70">Report link not available.</div>
+        )}
+      </CardContent>
     </Card>
   );
 }
+

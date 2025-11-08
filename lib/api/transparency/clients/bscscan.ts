@@ -2,11 +2,11 @@
 import { TokenInfo } from "@/lib/types";
 
 /**
- * 从 Etherscan V2 API 获取代币信息（名称、符号、总供应、验证状态）
- * 通过本地 Next.js API 路由代理，避免暴露 API Key。
+ * 浠?Etherscan V2 API 鑾峰彇浠ｅ竵淇℃伅锛堝悕绉般€佺鍙枫€佹€讳緵搴斻€侀獙璇佺姸鎬侊級
+ * 閫氳繃鏈湴 Next.js API 璺敱浠ｇ悊锛岄伩鍏嶆毚闇?API Key銆?
  */
 export async function getTokenInfo(address: string): Promise<TokenInfo> {
-  // 调用我们自己写的服务端代理路由
+  // 璋冪敤鎴戜滑鑷繁鍐欑殑鏈嶅姟绔唬鐞嗚矾鐢?
   const r = await fetch(`/api/etherscan/token-details?address=${encodeURIComponent(address)}`, { cache: "no-store" });
 
   if (!r.ok) {
@@ -15,7 +15,7 @@ export async function getTokenInfo(address: string): Promise<TokenInfo> {
 
   const data = await r.json();
 
-  // 统一格式返回
+  // 缁熶竴鏍煎紡杩斿洖
   return {
     address: data.address,
     name: data.name ?? "Unknown",

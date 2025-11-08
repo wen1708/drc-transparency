@@ -1,21 +1,23 @@
+// app/layout.tsx
+import type { Metadata } from "next";
 import "./globals.css";
-import Providers from "./providers";
-import type { ReactNode } from "react";
+import { Navbar } from "@/components/site/Navbar";
 
-export const metadata = {
-  title: "DRC Transparency",
-  description: "DragonCoin Transparency Page"
+export const metadata: Metadata = {
+  title: "DragonCoin",
+  description: "DragonCoin official website and transparency page",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="zh">
+    <html lang="en">
       <body>
-        <Providers>
-          <div className="min-h-screen bg-white">
-            {children}
-          </div>
-        </Providers>
+        <Navbar />         {/* render once here */}
+        <main>{children}</main>
       </body>
     </html>
   );
