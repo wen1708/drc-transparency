@@ -1,23 +1,19 @@
 // app/layout.tsx
-import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/site/Navbar";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "DragonCoin",
-  description: "DragonCoin official website and transparency page",
+  title: "DragonCoin Transparency",
+  description: "Live transparency dashboard for DragonCoin",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <Navbar />         {/* render once here */}
-        <main>{children}</main>
+      <body className="bg-slate-950 text-slate-50">
+        <Navbar />
+        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
     </html>
   );

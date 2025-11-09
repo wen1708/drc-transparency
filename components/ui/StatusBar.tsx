@@ -1,9 +1,8 @@
 // components/ui/StatusBar.tsx
 "use client";
-
 import { useMemo } from "react";
-import { Button } from "@/components/ui/Button";   // 注意大写 B（已统一）
-import { Switch } from "@/components/ui/switch";   // 你之前创建的是小写文件名 switch.tsx
+import { Button } from "@/components/ui/Button";
+import { Switch } from "@/components/ui/switch";
 
 type Props = {
   enabled: boolean;
@@ -13,13 +12,7 @@ type Props = {
   loading?: boolean;
 };
 
-export function StatusBar({
-  enabled,
-  onToggle,
-  onManualRefresh,
-  lastUpdated,
-  loading,
-}: Props) {
+export function StatusBar({ enabled, onToggle, onManualRefresh, lastUpdated, loading }: Props) {
   const timeAgo = useMemo(() => {
     if (!lastUpdated) return "—";
     const sec = Math.floor((Date.now() - lastUpdated) / 1000);
@@ -31,27 +24,21 @@ export function StatusBar({
   }, [lastUpdated]);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
       <div className="flex items-center gap-3">
         <Switch checked={enabled} onCheckedChange={onToggle} />
-        <span className="text-sm">Auto Refresh</span>
-        <span className="ml-3 text-xs opacity-70">
-          Last update: {timeAgo}
-        </span>
-        {loading ? (
-          <span className="ml-2 text-xs opacity-70">Loading…</span>
-        ) : null}
+        <span className="text-sm text-slate-200">Auto Refresh</span>
+        <span className="ml-3 text-xs text-slate-400">Last update: {timeAgo}</span>
+        {loading ? <span className="ml-2 text-xs text-slate-400">Loading…</span> : null}
       </div>
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
-          onClick={onManualRefresh}
-          disabled={!!loading}
-        >
-          Refresh now
-        </Button>
-      </div>
+      <Button
+        variant="secondary"
+        onClick={onManualRefresh}
+        disabled={!!loading}
+        className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700"
+      >
+        Refresh now
+      </Button>
     </div>
   );
 }

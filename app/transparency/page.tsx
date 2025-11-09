@@ -1,11 +1,12 @@
 // app/transparency/page.tsx
 "use client";
+
 import useSWR from "swr";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusBar } from "@/components/ui/StatusBar";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
+import { Skeleton } from "@/components/ui/Skeleton"; // ✅ 注意大写 S
+import { Card, CardContent } from "@/components/ui/Card";
+import { AllocationChart, AllocationSlice } from "@/components/transparency/AllocationChart";
 import { useAutoRefresh } from "@/lib/useAutoRefresh";
 
 const fetcher = (url: string) =>
@@ -15,60 +16,70 @@ const fetcher = (url: string) =>
   });
 
 export default function TransparencyPage() {
-  const { enabled, setEnabled, tick, lastUpdated, markUpdated } =
-    useAutoRefresh(10_000);
+  const { enabled, setEnabled, tick, lastUpdated, markUpdated } = useAutoRefresh(10_000);
   const [manualKey, setManualKey] = useState(0);
+  const [mounted, setMounted] = useState(false); // 用于避免首屏 hydration 不一致
+  useEffect(() => setMounted(true), []);
 
-  const key = useMemo(
-    () => `/api/transparency?ts=${tick}-${manualKey}`,
-    [tick, manualKey]
-  );
+  const key = useMemo(() => `/api/transparency?ts=${tick}-${manualKey}`, [tick, manualKey]);
 
   const { data, error, isLoading, mutate } = useSWR(key, fetcher, {
     revalidateOnFocus: false,
-    shouldRetryOnError: true,
+    keepPreviousData: true,
     errorRetryCount: 2,
     errorRetryInterval: 4000,
-    keepPreviousData: true,
   });
 
+  // 到了真正拿到数据再标记更新时间；仅在已挂载后写入本地缓存
   useEffect(() => {
     if (!data) return;
     markUpdated();
-    localStorage.setItem("drc:last", JSON.stringify(data));
-  }, [data, markUpdated]);
+    if (mounted) {
+      try {
+        localStorage.setItem("drc:last", JSON.stringify(data));
+      } catch {}
+    }
+  }, [data, markUpdated, mounted]);
 
-  const cached = useMemo(() => {
+  // 首屏（未 mounted）不读取 localStorage，保证与服务端一致
+  const safe = useMemo(() => {
+    if (data) return data;
+    if (!mounted) return undefined;
     try {
       const raw = localStorage.getItem("drc:last");
-      return raw ? JSON.parse(raw) : null;
+      return raw ? JSON.parse(raw) : undefined;
     } catch {
-      return null;
+      return undefined;
     }
-  }, []);
-
-  const safe = data || cached;
-  const loading = isLoading && !safe;
+  }, [data, mounted]);
 
   const onManualRefresh = useCallback(async () => {
     setManualKey((k) => k + 1);
     await mutate();
   }, [mutate]);
 
-  const pieData = useMemo(() => {
-    if (!safe?.locked) return [];
-    return Object.entries(safe.locked).map(([k, v]) => ({
+  const pieData: AllocationSlice[] | undefined = useMemo(() => {
+    if (!safe?.locked) return undefined;
+    const arr = Object.entries(safe.locked).map(([k, v]) => ({
       name: k,
       value: Number(v),
     }));
+    return arr.every((d) => !d.value) ? undefined : arr;
   }, [safe]);
 
+  // 小工具：包一层，默认值“—”，并抑制水合警告
+  const Num = ({ value }: { value: any }) => (
+    <span suppressHydrationWarning>{value ?? "—"}</span>
+  );
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">
+    <div className="space-y-6">
+      {/* Title */}
+      <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.25)]">
         DragonCoin Transparency (Live)
       </h1>
 
+      {/* Status Bar */}
       <StatusBar
         enabled={enabled}
         onToggle={setEnabled}
@@ -77,105 +88,67 @@ export default function TransparencyPage() {
         loading={isLoading}
       />
 
+      {/* Error */}
       {error && (
-        <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
-          Data fetch failed. Retrying automatically. Details:{" "}
-          {String(error.message || error)}
+        <div className="rounded-xl border border-red-900/40 bg-red-950/40 p-3 text-sm text-red-200">
+          Data fetch failed. Retrying automatically. Details: {String(error.message || error)}
         </div>
       )}
 
-      {/* --- Key Figures --- */}
+      {/* KPI Row */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Total Supply</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-8 w-40" />
+        {/* Total Supply */}
+        <Card className="border-slate-800 bg-slate-900/50">
+          <CardContent className="p-6">
+            <div className="text-xs font-medium text-sky-300">TOTAL SUPPLY</div>
+            {isLoading && !safe ? (
+              <Skeleton className="mt-2 h-8 w-40" />
             ) : (
-              <div className="text-2xl font-semibold">
-                {safe?.totalSupply ?? "—"}
+              // ✅ 字体改为黑色，其他不变（你当前卡片底可能是浅色时更清晰）
+              <div className="mt-1 text-2xl font-bold text-slate-900 drop-shadow-[0_0_3px_rgba(0,0,0,0.25)] kpi-number">
+                <Num value={safe?.totalSupply} />
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Circulating</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-8 w-40" />
+        {/* Circulating */}
+        <Card className="border-slate-800 bg-slate-900/50">
+          <CardContent className="p-6">
+            <div className="text-xs font-medium text-emerald-300">CIRCULATING</div>
+            {isLoading && !safe ? (
+              <Skeleton className="mt-2 h-8 w-40" />
             ) : (
-              <div className="text-2xl font-semibold">
-                {safe?.circulating ?? "—"}
+              <div className="mt-1 text-2xl font-bold text-slate-900 drop-shadow-[0_0_3px_rgba(0,0,0,0.25)] kpi-number">
+                <Num value={safe?.circulating} />
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Last On-chain Block</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-8 w-32" />
+        {/* Last On-chain Block */}
+        <Card className="border-slate-800 bg-slate-900/50">
+          <CardContent className="p-6">
+            <div className="text-xs font-medium text-amber-300">LAST ON-CHAIN BLOCK</div>
+            {isLoading && !safe ? (
+              <Skeleton className="mt-2 h-8 w-28" />
             ) : (
-              <div className="text-2xl font-semibold">
-                {safe?.lastOnchainBlock ?? "—"}
+              <div className="mt-1 text-2xl font-bold text-slate-900 drop-shadow-[0_0_3px_rgba(0,0,0,0.25)] kpi-number">
+                <Num value={safe?.lastOnchainBlock} />
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* --- Locked Breakdown --- */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Locked Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-64 w-full" />
-          ) : pieData.length === 0 ? (
-            <div className="rounded-xl border p-4 text-sm opacity-80">
-              No locked addresses configured yet. Add{" "}
-              <code>DRC_LOCKED_ADDRESSES</code> in your <code>.env.local</code>{" "}
-              file to display this chart.
-            </div>
-          ) : pieData.every((d) => !d.value) ? (
-            <div className="rounded-xl border p-4 text-sm opacity-80">
-              Locked addresses detected, but all balances are 0. Update
-              configuration or balances to see the chart.
-            </div>
-          ) : (
-            <div className="h-72 w-full">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={100}
-                  >
-                    {pieData.map((_, i) => (
-                      <Cell key={i} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Allocation Chart */}
+      <AllocationChart data={pieData} />
 
-      <div className="text-xs opacity-70">
-        Chain: {safe?.chainId ?? "—"} · Contract: {safe?.address ?? "—"} ·
-        Updated: {safe?.updatedAt ?? "—"}
+      {/* Footer Info */}
+      <div className="text-xs text-slate-400">
+        Chain: <span suppressHydrationWarning>{safe?.chainId ?? "—"}</span> · Contract:{" "}
+        <span suppressHydrationWarning>{safe?.address ?? "—"}</span> · Updated:{" "}
+        <span suppressHydrationWarning>{safe?.updatedAt ?? "—"}</span>
       </div>
     </div>
   );
